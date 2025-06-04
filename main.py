@@ -1,40 +1,41 @@
-# app.py
 import streamlit as st
 import requests
-import pandas as pd
 from PIL import Image
-import numpy as np
+import io
+import pandas as pd
 
-st.set_page_config(page_title="Zoom/Meet Attendance Tracker", layout="wide")
-st.title("📸 Zoom/Meet Attendance Tracker")
+st.title("📸 Attendance Detection via FastAPI")
 
-screenshot = st.file_uploader("Upload Screenshot of Zoom/Meet", type=["png", "jpg", "jpeg"])
-cols = st.number_input("Enter No. of Columns (People per Row)", min_value=1, max_value=15, value=5)
-rows = st.number_input("Enter No. of Rows", min_value=1, max_value=10, value=3)
+# File uploader
+uploaded_file = st.file_uploader("Upload Zoom/Meet Screenshot", type=["jpg", "jpeg", "png"])
+cols = st.number_input("Columns", min_value=1, value=5)
+rows = st.number_input("Rows", min_value=1, value=3)
 
-API_URL = "http://localhost:8000/process_attendance/"  # Replace with public URL if needed
+if uploaded_file and st.button("📍 Detect Attendance"):
+    # Show uploaded image
+    st.image(uploaded_file, caption="Uploaded Image")
 
-if st.button("📍 Detect Attendance"):
-    if screenshot:
-        with st.spinner("Uploading image to backend..."):
-            files = {"file": screenshot}
-            data = {"rows": int(rows), "cols": int(cols)}
+    # Convert to bytes for API call
+    image_bytes = uploaded_file.getvalue()
 
-            try:
-                res = requests.post(API_URL, files=files, data=data)
-                if res.ok:
-                    json_data = res.json()
-                    if json_data["status"] == "success":
-                        att_dict = json_data["data"]
-                        df = pd.DataFrame(att_dict.items(), columns=["Name", "Attendance Score"])
-                        st.success("✅ Attendance Processed!")
-                        st.dataframe(df)
-                        st.download_button("📥 Download CSV", df.to_csv(index=False), file_name="attendance.csv")
-                    else:
-                        st.error("❌ API Error: " + json_data["message"])
-                else:
-                    st.error(f"❌ API Call Failed: {res.status_code}")
-            except Exception as e:
-                st.error("❌ Request Failed: " + str(e))
-    else:
-        st.warning("Please upload a screenshot image first.")
+    # Send to your FastAPI backend
+    with st.spinner("Calling backend API..."):
+        try:
+            res = requests.post(
+                "https://your-fastapi-url.com/process_attendance/",  # <- your deployed API
+                files={"file": ("screenshot.jpg", image_bytes, "image/jpeg")},
+                data={"rows": int(rows), "cols": int(cols)}
+            )
+
+            result = res.json()
+
+            if result["status"] == "success":
+                df = pd.DataFrame(result["data"].items(), columns=["Name", "Attendance Score"])
+                st.success("✅ Attendance Detected!")
+                st.dataframe(df)
+                st.download_button("Download CSV", df.to_csv(index=False), "attendance.csv")
+            else:
+                st.error(f"API Error: {result['message']}")
+
+        except Exception as e:
+            st.error(f"❌ Request failed: {e}")
