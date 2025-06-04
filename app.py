@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import google.generativeai as genai
 from PIL import Image
-
+from io import BytesIO
 from dotenv import load_dotenv
 import os
 
@@ -26,7 +26,11 @@ rows = st.number_input("Enter No. of Rows", min_value=1, max_value=10, value=3)
 if screenshot:
     image = Image.open(screenshot)
     st.image(image, caption="Uploaded Screenshot", use_column_width=True)
-    image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+
+    # Resize image for faster processing
+    image_resized = image.copy()
+    image_resized.thumbnail((800, 800))
+    image_cv = cv2.cvtColor(np.array(image_resized), cv2.COLOR_RGB2BGR)
 
 def extract_names_from_full_image(image_bytes):
     model = genai.GenerativeModel("gemini-1.5-flash")
@@ -58,41 +62,38 @@ def detect_attendance_with_global_names(image, names, rows, cols):
                 x2, y2 = x1 + grid_w, y1 + grid_h
                 cell = image[y1:y2, x1:x2]
 
-                # Convert to grayscale
                 gray = cv2.cvtColor(cell, cv2.COLOR_BGR2GRAY)
-
-                # Check average brightness
                 brightness = np.mean(gray)
-
-                # Check for visual activity (std dev of pixel values)
                 variation = np.std(gray)
-                
 
-                # Custom logic:
-                # If it's too dark or flat, treat as video off
                 if brightness < 40 or variation < 15:
-                    attendance[name] = 0.5  # likely blank tile or placeholder
+                    attendance[name] = 0.5  # Likely video off
                 else:
-                    attendance[name] = 1  # assume video is ON
+                    attendance[name] = 1  # Video on
             else:
                 break
 
-    # Handle any missing names
     for name in names:
         if name not in attendance:
             attendance[name] = 0
 
     return attendance
 
-
 if st.button("📍 Detect Attendance"):
     if screenshot:
         with st.spinner("🧠 Extracting names with Gemini..."):
-            image_bytes = screenshot.getvalue()
+            resized_img = image.copy()
+            resized_img.thumbnail((800, 800))
+            buffer = BytesIO()
+            resized_img.save(buffer, format="JPEG", quality=60)
+            image_bytes = buffer.getvalue()
             all_names = extract_names_from_full_image(image_bytes)
 
         if all_names and not all_names[0].startswith("❌ Error"):
-            with st.spinner("🧑‍💻 Detecting faces and matching attendance..."):
+            st.success("✅ Names Extracted")
+            st.write("Detected Names:", all_names)
+
+            with st.spinner("🧑‍💻 Detecting attendance from video tiles..."):
                 att = detect_attendance_with_global_names(image_cv, all_names, int(rows), int(cols))
                 df = pd.DataFrame(att.items(), columns=["Name", "Attendance Score"])
                 st.success("✅ Attendance Processed!")
