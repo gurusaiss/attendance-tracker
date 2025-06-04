@@ -3,7 +3,9 @@ uvicorn
 python-dotenv
 pillow
 opencv-python
+opencv-python-headless
 numpy
 pandas
 streamlit
 google-generativeai
+python-multipart
