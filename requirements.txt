@@ -1,12 +1,12 @@
 fastapi
 uvicorn
-python-dotenv
-pillow
+
+streamlit
+
 opencv-python
 opencv-python-headless
 numpy
 pandas
-streamlit
-requests
+pillow
+python-dotenv
 google-generativeai
-python-multipart
