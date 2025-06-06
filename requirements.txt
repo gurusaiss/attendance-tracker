@@ -2,8 +2,8 @@ fastapi
 uvicorn
 
 streamlit
+requests
 
-opencv-python
 opencv-python-headless
 numpy
 pandas
