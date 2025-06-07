@@ -10,8 +10,8 @@ from dotenv import load_dotenv
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-main = FastAPI()
-main.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # Extract names using Gemini
 def extract_names_from_image(image_bytes):
@@ -34,7 +34,7 @@ def detect_attendance(image_np, names, rows, cols):
                 att[names[idx]] = 0.5 if np.mean(gray) < 40 or np.std(gray) < 15 else 1
     return att
 
-@main.post("/process_attendance/")
+@app.post("/process_attendance/")
 async def process_attendance(file: UploadFile, rows: int = Form(...), cols: int = Form(...)):
     contents = await file.read()
     image = Image.open(io.BytesIO(contents))
